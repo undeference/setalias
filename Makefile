@@ -38,17 +38,22 @@ endif
 
 CFLAGS+= $(DEFS)
 
+.PHONY default
 default: release
 
+.PHONY debug
 debug:
 	$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(WARNING_FLAGS) setalias.c -o $(EXEDBG)
 
+.PHONY release
 release:
 	$(CC) $(CFLAGS) $(OPTIMIZE_FLAGS) $(WARNING_FLAGS) setalias.c -o $(EXE)
 
+.PHONY clean
 clean:
 	$(RM) $(EXEDBG) $(EXE)
 
+.PHONY install
 install:
 	$(RM) $(INSTALL_PATH)/$(EXE)
 	$(INSTALL) -g root -o root -m 4755 -s $(EXE) $(INSTALL_PATH)
