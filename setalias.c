@@ -132,7 +132,7 @@ struct optt {
 
 int aliases (const struct optss *o, const char *newalias) {
 	FILE *in, *out = NULL;
-	int ifd, ofd;
+	int ifd, ofd = -1;
 	struct stat st;
 	size_t n = 0, l = strlen (o->file);
 	ssize_t r;
