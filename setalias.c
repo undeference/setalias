@@ -22,6 +22,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <arpa/inet.h>
@@ -40,7 +41,6 @@
 #define NEWSUFFIX ".new"
 #define OLDSUFFIX ".bak"
 #define SUPERUID 0
-#define OFS(t,f) ((size_t)&(((t *)NULL)->f))
 
 const char *progname;
 
@@ -272,22 +272,22 @@ static struct optt args[CHAR_MAX];
 void _setupargs (void) {
 	/* -f path to alias file */
 	args['f'].type = TYPESTR,
-	args['f'].ofs = OFS (struct optss, file),
+	args['f'].ofs = offsetof (struct optss, file),
 	args['f'].root = 1;
 	/* -S suffix */
 	args['S'].type = TYPESTR,
-	args['S'].ofs = OFS (struct optss, suffix),
+	args['S'].ofs = offsetof (struct optss, suffix),
 	args['S'].root = 1;
 	/* -u user to set */
 	args['u'].type = TYPESTR,
-	args['u'].ofs = OFS (struct optss, user),
+	args['u'].ofs = offsetof (struct optss, user),
 	args['u'].root = 1;
 	/* -d delete/unset alias */
 	args['d'].type = TYPEBOOL,
-	args['d'].ofs = OFS (struct optss, delete);
+	args['d'].ofs = offsetof (struct optss, delete);
 	/* -v verbosity */
 	args['v'].type = TYPEINC,
-	args['v'].ofs = OFS (struct optss, verbose);
+	args['v'].ofs = offsetof (struct optss, verbose);
 }
 
 /* handle args, returns number of arguments consumed */
