@@ -398,6 +398,7 @@ int validutf8 (char **t) {
 }
 
 int validalias (char *t) {
+	char *s = t;
 	int at = 0;
 	/* this is a local user account */
 	if (getpwnam (t))
@@ -413,7 +414,7 @@ int validalias (char *t) {
 		else if (*t == '.') {
 			/* cannot be first or last */
 			if (
-				t[-1] == '\0' ||
+				t == s ||
 				t[-1] == '@' ||
 				t[1] == '@' ||
 				t[1] == '\0'
@@ -428,7 +429,7 @@ int validalias (char *t) {
 				return 0;
 		} else if (*t == '@') {
 			/* cannot be first or last */
-			if (!t[-1] || !t[1])
+			if (t == s || !t[1])
 				return 0;
 			at = 1;
 			if (t[1] == '[')
