@@ -44,13 +44,13 @@
 
 const char *progname;
 
-char *skipspaces (char *s, int n) {
+char *skipspaces (char *s) {
 	while (*s && isspace (*s))
-		s += n;
+		s++;
 	return s;
 }
 
-char *strnchr (const char *s, int c, size_t l) {
+char *strnchr (char *s, int c, size_t l) {
 	for (; *s && l > 0; l--, s++) {
 		if (*s == c)
 			return (char *)s;
@@ -58,47 +58,163 @@ char *strnchr (const char *s, int c, size_t l) {
 	return NULL;
 }
 
-int getalias (char * const in, char *user, char *alias, size_t m) {
-	char *p, *c;
-	size_t l, t;
-	*user = *alias = '\0';
-	skipspaces (in, 1);
-	/* stop at # or \n, but there might not be a trailing \n */
-	if ((p = strpbrk (in, "\n#")))
-		l = p - in;
-	else
-		l = strlen (in);
+char *copyquoted (char *in, char *out, size_t m) {
+	char *p;
+	size_t l;
+	if (*in != '"')
+		return NULL;
 
-	/* find delimiter */
-	if (!(p = strnchr (in, ':', l)))
-		return 0;
-	/* remove trailing spaces */
-	c = skipspaces (p - 1, -1) + 1;
-	t = c - in;
-	/* username too big */
-	if (t >= m)
-		return 0;
-	memcpy (user, in, t);
-	user[t] = '\0';
+	in++;
+	// the quote must terminate
+	if (!(p = strnchr (in, '"', m)))
+		return NULL;
 
-	/* skip leading and trailing spaces in alias */
-	p = skipspaces (p + 1, 1);
-	c = skipspaces (in + l - 1, -1) + 1;
-	t = c - p;
-	/* too big for alias */
-	if (t >= m)
+	// length of output string
+	l = p - in;
+	// m must be bigger than l so there is space for the \0
+	if (m <= l)
+		return NULL;
+
+	memcpy (out, in, l);
+	out[l + 1] = '\0';
+
+	return p;
+}
+
+char *gettoken (char *in, char *out, size_t len) {
+	in = skipspaces (in);
+
+	if (!*in)
+		return NULL;
+
+	if (*in == '"')
+		return copyquoted (in, out, len);
+
+	while (*in) {
+		if (isspace (*in))
+			break;
+
+		switch (*in) {
+			case '\n':
+			case '#':
+			case ':':
+				goto done;
+
+			case '"':
+				return NULL;
+
+			default:
+				// need space for this character and \0
+				if (len < 2)
+					return NULL;
+
+				*out++ = *in++;
+				len--;
+		}
+	}
+	done:
+	*out = '\0';
+
+	return in;
+}
+
+int puttoken (char *out, const char *in, size_t m) {
+	size_t chrs;
+	int quote = 0;
+	if (strpbrk (in, "\t\n :#"))
+		quote = 1;
+
+	// \0
+	chrs = strlen (in) + 1;
+	if (m < chrs + quote * 2)
 		return 0;
-	memcpy (alias, p, t);
-	alias[t] = '\0';
+
+	if (quote)
+		*out++ = '"';
+
+	memcpy (out, in, chrs);
+	out += strlen (out);
+
+	if (quote)
+		*out++ = '"';
+
+	*out = '\0';
 	return 1;
 }
 
-/* XXX this does no verification, is dangerous with unsafe input */
-int setalias (char *line, const char *alias, size_t n) {
-	char *p = skipspaces (strchr (line, ':') + 1, 1);
-	if (p - line + strlen (alias) >= n)
+// name: alias
+int getalias (char *in, char *user, char *alias, size_t m) {
+	*user = *alias = '\0';
+	in = skipspaces (in);
+
+	// comment or end of line
+	if (!*in || *in == '\n' || *in == '#')
 		return 0;
-	strcpy (p, alias);
+
+	// name:
+	if (!(in = gettoken (in, user, m)))
+		return 0;
+
+	in = skipspaces (in);
+	if (*in != ':')
+		return 0;
+
+	in++;
+
+	// alias
+	if (!(in = gettoken (in, alias, m)))
+		return 0;
+
+	in = skipspaces (in);
+	// comment or end of line
+	if (*in && *in != '#' && *in != '\n')
+		return 0;
+
+	return 1;
+}
+
+
+int setalias (char *line, const char *alias, size_t n) {
+	size_t len;
+	char *p = strchr (line, ':');
+	if (!p)
+		return 0;
+	p++;
+
+	if (!(p = skipspaces (p)))
+		return 0;
+
+	// space remaining
+	n -= p - line;
+
+	if (!puttoken (p, alias, n))
+		return 0;
+	len = strlen (p);
+
+	if (n < len + 2)
+		return 0;
+	*p++ = '\n';
+	*p = '\0';
+
+	return 1;
+}
+
+int makealias (char *line, const char *user, const char *alias, size_t n) {
+	size_t len;
+
+	if (!puttoken (line, user, n))
+		return 0;
+
+	len = strlen (line);
+
+	if (n < len + 3)
+		return 0;
+	line[len] = ':';
+	line[len + 1] = '\t';
+
+	if (!puttoken (line + len + 2, alias, n - len - 2))
+		return 0;
+
 	return 1;
 }
 
@@ -159,8 +275,8 @@ int aliases (const struct optss *o, const char *newalias) {
 		memcpy (new, o->file, l);
 		strcpy (new + l, NEWSUFFIX);
 		if (!(out = fopen (new, "w"))) {
-			fprintf (stderr, "%s: could not open out file: %s\n",
-				progname, strerror (errno));
+			fprintf (stderr, "%s: could not open %s file: %s\n",
+				progname, new, strerror (errno));
 			goto fail;
 		}
 		ofd = fileno (out);
@@ -216,12 +332,14 @@ int aliases (const struct optss *o, const char *newalias) {
 		else if (o->delete) {
 			fprintf (stderr, "%s: no change\n", progname);
 			goto fail;
-		} else if (!fprintf (out, "%s:\t%s\n", o->user, newalias)) {
+		} else if (!makealias (line, o->user, newalias, 1000)) {
 			fprintf (stderr, "%s: updating failed\n",
 				progname);
 			goto fail;
-		} else
+		} else {
+			fprintf (out, "%s\n", line);
 			printf ("set %s's alias to %s\n", o->user, newalias);
+		}
 	}
 	free (line);
 	n = 0;
@@ -487,9 +605,9 @@ int main (int argc, char **argv) {
 		opts.suffix = OLDSUFFIX;
 	/* try to figure out what user means */
 	if (opts.user) {
+		struct passwd *pw;
 		/* is this a uid? */
 		if (isdigit (*opts.user)) {
-			struct passwd *pw;
 			uid = atoi (opts.user);
 			if (!(pw = getpwuid (uid))) {
 				endpwent ();
@@ -499,6 +617,12 @@ int main (int argc, char **argv) {
 				return 1;
 			}
 			opts.user = pw->pw_name;
+		} else if (!(pw = getpwnam (opts.user))) {
+			endpwent ();
+			fprintf (stderr,
+				"%s: invalid user '%s'\n",
+				progname, opts.user);
+			return 1;
 		}
 	} else {
 		struct passwd *pw = getpwuid (uid);
