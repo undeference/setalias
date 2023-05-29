@@ -175,7 +175,6 @@ int getalias (char *in, char *user, char *alias, size_t m) {
 
 
 int setalias (char *line, const char *alias, size_t n) {
-	size_t len;
 	char *p = strchr (line, ':');
 	if (!p)
 		return 0;
@@ -189,9 +188,9 @@ int setalias (char *line, const char *alias, size_t n) {
 
 	if (!puttoken (p, alias, n))
 		return 0;
-	len = strlen (p);
+	p += strlen (p) + 1;
 
-	if (n < len + 2)
+	if (n < p - line + 2)
 		return 0;
 	*p++ = '\n';
 	*p = '\0';
