@@ -250,6 +250,7 @@ struct optt {
 int aliases (const struct optss *o, const char *newalias) {
 	FILE *in, *out = NULL;
 	int ifd, ofd = -1;
+	int lockret;
 	struct stat st;
 	size_t n = 0, l = strlen (o->file);
 	ssize_t r;
@@ -262,8 +263,17 @@ int aliases (const struct optss *o, const char *newalias) {
 		return 0;
 	}
 	ifd = fileno (in);
+#define RETRY(r, e) do { r = (e); } while (r == -1 && errno == EINTR)
+	RETRY (lockret, flock (ifd, LOCK_SH));
+	if (lockret == -1) {
+		fprintf (stderr, "%s: could not lock %s: %s\n",
+			progname, o->file, strerror (errno));
+		goto fail;
+	}
+
 	if (!o->get) {
-		if (flock (ifd, LOCK_EX) != 0) {
+		RETRY (lockret, flock (ifd, LOCK_EX));
+		if (lockret == -1) {
 			fprintf (stderr, "%s: could not lock %s: %s\n",
 				progname, o->file, strerror (errno));
 			goto fail;
@@ -281,7 +291,8 @@ int aliases (const struct optss *o, const char *newalias) {
 			goto fail;
 		}
 		ofd = fileno (out);
-		if (flock (ofd, LOCK_EX) != 0) {
+		RETRY (lockret, flock (ofd, LOCK_EX));
+		if (lockret == -1) {
 			fprintf (stderr, "%s: could not lock temp file: %s\n",
 				progname, strerror (errno));
 			goto fail;
