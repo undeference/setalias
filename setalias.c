@@ -71,12 +71,14 @@ char *copyquoted (char *in, char *out, size_t m) {
 
 	// length of output string
 	l = p - in;
+	// advance past "
+	p++;
 	// m must be bigger than l so there is space for the \0
 	if (m <= l)
 		return NULL;
 
 	memcpy (out, in, l);
-	out[l + 1] = '\0';
+	out[l] = '\0';
 
 	return p;
 }
