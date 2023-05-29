@@ -286,7 +286,7 @@ int aliases (const struct optss *o, const char *newalias) {
 		memcpy (new, o->file, l);
 		strcpy (new + l, NEWSUFFIX);
 		if (!(out = fopen (new, "w"))) {
-			fprintf (stderr, "%s: could not open %s file: %s\n",
+			fprintf (stderr, "%s: could not open %s: %s\n",
 				progname, new, strerror (errno));
 			goto fail;
 		}
