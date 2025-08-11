@@ -126,16 +126,17 @@ int puttoken (char *out, const char *in, size_t m) {
 	if (strpbrk (in, "\t\n :#"))
 		quote = 1;
 
-	// \0
-	chrs = strlen (in) + 1;
-	if (m < chrs + quote * 2)
+	chrs = strlen (in);
+	// account for 0 or 2 quote characters and a \0
+	if (m < chrs + quote * 2 + 1)
 		return 0;
 
 	if (quote)
 		*out++ = '"';
 
+	// does not copy the \0
 	memcpy (out, in, chrs);
-	out += strlen (out);
+	out += chrs;
 
 	if (quote)
 		*out++ = '"';
