@@ -53,7 +53,7 @@ char *skipspaces (char *s) {
 char *strnchr (char *s, int c, size_t l) {
 	for (; *s && l > 0; l--, s++) {
 		if (*s == c)
-			return (char *)s;
+			return s;
 	}
 	return NULL;
 }
