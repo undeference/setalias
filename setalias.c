@@ -45,9 +45,7 @@
 const char *progname;
 
 char *skipspaces (char *s) {
-	while (*s && isspace (*s))
-		s++;
-	return s;
+	return s + strspn (s, "\t\n\v\f\r ");
 }
 
 char *strnchr (char *s, int c, size_t l) {
