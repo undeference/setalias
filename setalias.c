@@ -671,35 +671,38 @@ int main (int argc, char **argv) {
 		opts.delete ? "true" : "false",
 		opts.get ? "true" : "false",
 		alias);
-	if (NEWALIASES) {
-		struct stat st;
-		if (stat (NEWALIASES, &st) != 0) {
-			fprintf (stderr,
-				"%s: cannot stat %s\n",
-				progname, NEWALIASES);
-			return 2;
-		}
-		if (st.st_uid != SUPERUID) {
-			fprintf (stderr,
-				"%s: %s is not owned by root\n",
-				progname, NEWALIASES);
-			return 2;
-		}
-		if (st.st_mode & (S_IWGRP | S_IWOTH)) {
-			fprintf (stderr,
-				"%s: %s does not seem secure\n",
-				progname, NEWALIASES);
-			return 2;
-		}
+
+#if NEWALIASES
+	struct stat st;
+	if (stat (NEWALIASES, &st) != 0) {
+		fprintf (stderr,
+			"%s: cannot stat %s\n",
+			progname, NEWALIASES);
+		return 2;
 	}
+	if (st.st_uid != SUPERUID) {
+		fprintf (stderr,
+			"%s: %s is not owned by root\n",
+			progname, NEWALIASES);
+		return 2;
+	}
+	if (st.st_mode & (S_IWGRP | S_IWOTH)) {
+		fprintf (stderr,
+			"%s: %s does not seem secure\n",
+			progname, NEWALIASES);
+		return 2;
+	}
+#endif
+
 	if (!aliases (&opts, alias)) {
 		endpwent ();
 		return 1;
 	}
 	endpwent ();
-	if (NEWALIASES) {
-		setuid (SUPERUID);
-		execl (NEWALIASES, NEWALIASES, (char *)NULL);
-	}
+
+#if NEWALIASES
+	setuid (SUPERUID);
+	execl (NEWALIASES, NEWALIASES, (char *)NULL);
+#endif
 	return 0;
 }
